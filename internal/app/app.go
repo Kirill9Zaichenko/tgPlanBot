@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"tgBotPlan/internal/config"
 	"tgBotPlan/internal/handlers"
-	"tgBotPlan/internal/storage"
+	"tgBotPlan/internal/repository"
 
 	"github.com/go-telegram/bot"
 )

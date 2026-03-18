@@ -3,7 +3,7 @@ package app
 import (
 	"github.com/go-telegram/bot"
 	"tgBotPlan/internal/handlers"
-	"tgBotPlan/internal/storage"
+	"tgBotPlan/internal/repository"
 )
 
 func Routes(store storage.TaskStore) []bot.Option {
