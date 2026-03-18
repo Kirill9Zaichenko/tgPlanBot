@@ -1,29 +1,67 @@
 package config
 
 import (
-	"gopkg.in/yaml.v3"
-	"io/ioutil"
 	"log"
+	"os"
+
+	"gopkg.in/yaml.v3"
 )
 
 type Config struct {
-	Telegram TGConfig `yaml:"telegram"`
+	App       AppConfig       `yaml:"app"`
+	Telegram  TelegramConfig  `yaml:"telegram"`
+	HTTP      HTTPConfig      `yaml:"http"`
+	Database  DatabaseConfig  `yaml:"database"`
+	Dragonfly DragonflyConfig `yaml:"dragonfly"`
 }
 
-type TGConfig struct {
+type AppConfig struct {
+	Env      string `yaml:"env"`
+	LogLevel string `yaml:"log_level"`
+}
+
+type TelegramConfig struct {
 	Token string `yaml:"token"`
 }
 
+type HTTPConfig struct {
+	Host string `yaml:"host"`
+	Port int    `yaml:"port"`
+}
+
+type DatabaseConfig struct {
+	SQLitePath string `yaml:"sqlite_path"`
+}
+
+type DragonflyConfig struct {
+	Addr     string `yaml:"addr"`
+	Password string `yaml:"password"`
+	DB       int    `yaml:"db"`
+}
+
 func NewConfig() *Config {
-	data, err := ioutil.ReadFile("config.yaml")
+	data, err := os.ReadFile("config/config.yaml")
 	if err != nil {
 		log.Fatalf("failed to read config file: %v", err)
 	}
 
-	var config Config
-	if err := yaml.Unmarshal(data, &config); err != nil {
-		log.Fatalf("failed to unmarshal config file: %v", err)
+	var cfg Config
+
+	if err := yaml.Unmarshal(data, &cfg); err != nil {
+		log.Fatalf("failed to parse config file: %v", err)
 	}
 
-	return &config
+	validate(&cfg)
+
+	return &cfg
+}
+
+func validate(cfg *Config) {
+	if cfg.Telegram.Token == "" {
+		log.Fatal("telegram.token is empty")
+	}
+
+	if cfg.Database.SQLitePath == "" {
+		log.Fatal("database.sqlite_path is empty")
+	}
 }

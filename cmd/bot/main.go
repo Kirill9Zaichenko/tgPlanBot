@@ -6,30 +6,23 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"tgBotPlan/internal/app"
-	"tgBotPlan/internal/config"
-	"tgBotPlan/internal/repository/memory"
+
+	"tgPlanBot/internal/config"
+	telegramtransport "tgPlanBot/internal/transport/telegram"
 )
 
 func main() {
-	ctx, stop := signal.NotifyContext(
-		context.Background(),
-		os.Interrupt,
-		syscall.SIGTERM,
-	)
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
 	cfg := config.NewConfig()
-	store := memory.NewTaskStore()
 
-	b, err := app.NewBot(cfg, store)
+	botApp, err := telegramtransport.NewBot(cfg)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("failed to initialize bot: %v", err)
 	}
 
-	log.Println("bot started")
+	log.Printf("bot started in %s mode", cfg.App.Env)
 
-	b.Start(ctx)
-
-	log.Println("bot stopped")
+	botApp.Start(ctx)
 }
