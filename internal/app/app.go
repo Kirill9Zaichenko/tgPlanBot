@@ -9,8 +9,8 @@ import (
 	"github.com/go-telegram/bot"
 )
 
-func NewBot(cfg config.Config, store storage.TaskStore) (*bot.Bot, error) {
-	if cfg.Token == "" {
+func NewBot(cfg *config.Config, store storage.TaskStore) (*bot.Bot, error) {
+	if cfg.Telegram.Token == "" {
 		return nil, fmt.Errorf("TELEGRAM_BOT_TOKEN is empty")
 	}
 
@@ -21,5 +21,5 @@ func NewBot(cfg config.Config, store storage.TaskStore) (*bot.Bot, error) {
 
 	opts = append(opts, Routes(store)...)
 
-	return bot.New(cfg.Token, opts...)
+	return bot.New(cfg.Telegram.Token, opts...)
 }

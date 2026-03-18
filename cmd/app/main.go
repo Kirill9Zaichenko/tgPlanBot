@@ -20,11 +20,6 @@ func main() {
 	defer stop()
 
 	cfg := config.NewConfig()
-
-	if cfg.Token == "" {
-		log.Fatal("TELEGRAM_BOT_TOKEN is empty")
-	}
-
 	store := memory.NewTaskStore()
 
 	b, err := app.NewBot(cfg, store)

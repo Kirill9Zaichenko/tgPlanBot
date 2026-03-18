@@ -1,11 +1,29 @@
 package config
 
+import (
+	"gopkg.in/yaml.v3"
+	"io/ioutil"
+	"log"
+)
+
 type Config struct {
-	Token string
+	Telegram TGConfig `yaml:"telegram"`
 }
 
-func NewConfig() Config {
-	return Config{
-		Token: "8525306004:AAGDl3c1OGW7JIwX7zTZ7nF9eR49YcASonY",
+type TGConfig struct {
+	Token string `yaml:"token"`
+}
+
+func NewConfig() *Config {
+	data, err := ioutil.ReadFile("config.yaml")
+	if err != nil {
+		log.Fatalf("failed to read config file: %v", err)
 	}
+
+	var config Config
+	if err := yaml.Unmarshal(data, &config); err != nil {
+		log.Fatalf("failed to unmarshal config file: %v", err)
+	}
+
+	return &config
 }
