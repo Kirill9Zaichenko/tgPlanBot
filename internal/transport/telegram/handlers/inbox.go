@@ -1,27 +1,38 @@
-package telegram
+package handlers
 
 import (
 	"context"
 	"fmt"
-	"github.com/go-telegram/bot/models"
 	"log"
-	"strings"
 
 	tgbot "github.com/go-telegram/bot"
+	"github.com/go-telegram/bot/models"
+
+	moderationapp "tgPlanBot/internal/app/moderation"
+	"tgPlanBot/internal/transport/telegram/keyboards"
+	"tgPlanBot/internal/transport/telegram/messages"
 )
 
-func (b *Bot) handleInbox(ctx context.Context, bot *tgbot.Bot, update *models.Update) {
+type InboxHandler struct {
+	moderationService *moderationapp.Service
+}
+
+func NewInboxHandler(moderationService *moderationapp.Service) *InboxHandler {
+	return &InboxHandler{moderationService: moderationService}
+}
+
+func (h *InboxHandler) Handle(ctx context.Context, bot *tgbot.Bot, update *models.Update) {
 	if update.Message == nil || update.Message.From == nil {
 		return
 	}
 
 	userID := update.Message.From.ID
 
-	items, err := b.moderationService.ListInbox(ctx, userID)
+	items, err := h.moderationService.ListInbox(ctx, userID)
 	if err != nil {
 		_, _ = bot.SendMessage(ctx, &tgbot.SendMessageParams{
 			ChatID: update.Message.Chat.ID,
-			Text:   "Не удалось загрузить входящие запросы.",
+			Text:   messages.InboxLoadFailed(),
 		})
 		log.Printf("list inbox: %v", err)
 		return
@@ -30,28 +41,26 @@ func (b *Bot) handleInbox(ctx context.Context, bot *tgbot.Bot, update *models.Up
 	if len(items) == 0 {
 		_, _ = bot.SendMessage(ctx, &tgbot.SendMessageParams{
 			ChatID: update.Message.Chat.ID,
-			Text:   "Входящих запросов нет.",
+			Text:   messages.NoInboxItems(),
 		})
 		return
 	}
 
-	var sb strings.Builder
-	sb.WriteString("Входящие запросы:\n\n")
-
 	for _, item := range items {
-		sb.WriteString(fmt.Sprintf(
-			"Task #%d\nОтправитель: %d\nСтатус: %s\n\n",
+		text := fmt.Sprintf(
+			"Task #%d\nОтправитель: %d\nСтатус: %s",
 			item.TaskID,
 			item.SenderUserID,
 			item.Status,
-		))
-	}
+		)
 
-	_, err = bot.SendMessage(ctx, &tgbot.SendMessageParams{
-		ChatID: update.Message.Chat.ID,
-		Text:   sb.String(),
-	})
-	if err != nil {
-		log.Printf("send /inbox response: %v", err)
+		_, err := bot.SendMessage(ctx, &tgbot.SendMessageParams{
+			ChatID:      update.Message.Chat.ID,
+			Text:        text,
+			ReplyMarkup: keyboards.InboxTaskActions(item.TaskID),
+		})
+		if err != nil {
+			log.Printf("send inbox item %d: %v", item.TaskID, err)
+		}
 	}
 }

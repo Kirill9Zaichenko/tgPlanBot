@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"database/sql"
 	"log"
 	"net/http"
 	"os"
@@ -9,7 +10,11 @@ import (
 	"syscall"
 	"time"
 
+	moderationapp "tgPlanBot/internal/app/moderation"
+	taskapp "tgPlanBot/internal/app/task"
 	"tgPlanBot/internal/config"
+	"tgPlanBot/internal/db"
+	sqliterepo "tgPlanBot/internal/repository/sqlite"
 	httptransport "tgPlanBot/internal/transport/http"
 )
 
@@ -19,7 +24,23 @@ func main() {
 
 	cfg := config.NewConfig()
 
-	server := httptransport.NewServer(cfg)
+	if err := db.RunMigrations(cfg.Database.SQLitePath, cfg.Database.MigrationsPath); err != nil {
+		log.Fatalf("failed to run migrations: %v", err)
+	}
+
+	sqliteDB, err := db.NewSQLite(cfg.Database.SQLitePath)
+	if err != nil {
+		log.Fatalf("failed to connect sqlite: %v", err)
+	}
+	defer closeDB(sqliteDB)
+
+	taskRepo := sqliterepo.NewTaskRepository(sqliteDB)
+	taskRequestRepo := sqliterepo.NewTaskRequestRepository(sqliteDB)
+
+	taskService := taskapp.NewService(sqliteDB, taskRepo, taskRequestRepo)
+	moderationService := moderationapp.NewService(sqliteDB, taskRepo, taskRequestRepo)
+
+	server := httptransport.NewServer(cfg, taskService, moderationService)
 
 	errCh := make(chan error, 1)
 
@@ -45,4 +66,10 @@ func main() {
 	}
 
 	log.Println("http api stopped")
+}
+
+func closeDB(db *sql.DB) {
+	if err := db.Close(); err != nil {
+		log.Printf("failed to close db: %v", err)
+	}
 }

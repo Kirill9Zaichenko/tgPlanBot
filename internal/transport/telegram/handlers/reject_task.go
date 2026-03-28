@@ -1,4 +1,4 @@
-package telegram
+package handlers
 
 import (
 	"context"
@@ -8,18 +8,29 @@ import (
 
 	tgbot "github.com/go-telegram/bot"
 	"github.com/go-telegram/bot/models"
+
+	moderationapp "tgPlanBot/internal/app/moderation"
+	"tgPlanBot/internal/transport/telegram/messages"
 )
 
-func (b *Bot) handleRejectTask(ctx context.Context, bot *tgbot.Bot, update *models.Update) {
+type RejectHandler struct {
+	moderationService *moderationapp.Service
+}
+
+func NewRejectHandler(moderationService *moderationapp.Service) *RejectHandler {
+	return &RejectHandler{moderationService: moderationService}
+}
+
+func (h *RejectHandler) Handle(ctx context.Context, bot *tgbot.Bot, update *models.Update) {
 	if update.Message == nil || update.Message.From == nil {
 		return
 	}
 
-	parts := splitCommand(update.Message.Text)
+	parts := strings.Fields(strings.TrimSpace(update.Message.Text))
 	if len(parts) < 2 {
 		_, _ = bot.SendMessage(ctx, &tgbot.SendMessageParams{
 			ChatID: update.Message.Chat.ID,
-			Text:   "Использование: /reject {task_id} {comment}",
+			Text:   messages.UsageReject(),
 		})
 		return
 	}
@@ -28,7 +39,7 @@ func (b *Bot) handleRejectTask(ctx context.Context, bot *tgbot.Bot, update *mode
 	if err != nil || taskID <= 0 {
 		_, _ = bot.SendMessage(ctx, &tgbot.SendMessageParams{
 			ChatID: update.Message.Chat.ID,
-			Text:   "Некорректный task_id.",
+			Text:   messages.InvalidTaskID(),
 		})
 		return
 	}
@@ -43,10 +54,10 @@ func (b *Bot) handleRejectTask(ctx context.Context, bot *tgbot.Bot, update *mode
 
 	receiverUserID := update.Message.From.ID
 
-	if err := b.moderationService.RejectTask(ctx, taskID, receiverUserID, comment); err != nil {
+	if err := h.moderationService.RejectTask(ctx, taskID, receiverUserID, comment); err != nil {
 		_, _ = bot.SendMessage(ctx, &tgbot.SendMessageParams{
 			ChatID: update.Message.Chat.ID,
-			Text:   "Не удалось отклонить задачу: " + err.Error(),
+			Text:   messages.RejectFailed(err),
 		})
 		log.Printf("reject task %d by user %d: %v", taskID, receiverUserID, err)
 		return
@@ -54,7 +65,7 @@ func (b *Bot) handleRejectTask(ctx context.Context, bot *tgbot.Bot, update *mode
 
 	_, err = bot.SendMessage(ctx, &tgbot.SendMessageParams{
 		ChatID: update.Message.Chat.ID,
-		Text:   "Задача отклонена.",
+		Text:   messages.TaskRejected(),
 	})
 	if err != nil {
 		log.Printf("send /reject response: %v", err)

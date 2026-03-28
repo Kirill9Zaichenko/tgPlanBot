@@ -30,7 +30,8 @@ type HTTPConfig struct {
 }
 
 type DatabaseConfig struct {
-	SQLitePath string `yaml:"sqlite_path"`
+	SQLitePath     string `yaml:"sqlite_path"`
+	MigrationsPath string `yaml:"migrations_path"`
 }
 
 type DragonflyConfig struct {
@@ -46,7 +47,6 @@ func NewConfig() *Config {
 	}
 
 	var cfg Config
-
 	if err := yaml.Unmarshal(data, &cfg); err != nil {
 		log.Fatalf("failed to parse config file: %v", err)
 	}
@@ -63,5 +63,9 @@ func validate(cfg *Config) {
 
 	if cfg.Database.SQLitePath == "" {
 		log.Fatal("database.sqlite_path is empty")
+	}
+
+	if cfg.Database.MigrationsPath == "" {
+		log.Fatal("database.migrations_path is empty")
 	}
 }

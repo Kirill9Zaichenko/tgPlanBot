@@ -1,25 +1,41 @@
 package app
 
 import (
+	"database/sql"
 	"fmt"
-	"tgBotPlan/internal/config"
-	"tgBotPlan/internal/handlers"
-	"tgBotPlan/internal/repository"
 
-	"github.com/go-telegram/bot"
+	moderationapp "tgPlanBot/internal/app/moderation"
+	taskapp "tgPlanBot/internal/app/task"
+	"tgPlanBot/internal/config"
+	"tgPlanBot/internal/db"
+	sqliterepo "tgPlanBot/internal/repository/sqlite"
 )
 
-func NewBot(cfg *config.Config, store storage.TaskStore) (*bot.Bot, error) {
-	if cfg.Telegram.Token == "" {
-		return nil, fmt.Errorf("TELEGRAM_BOT_TOKEN is empty")
+type App struct {
+	DB                *sql.DB
+	TaskService       *taskapp.Service
+	ModerationService *moderationapp.Service
+}
+
+func New(cfg *config.Config) (*App, error) {
+	if err := db.RunMigrations(cfg.Database.SQLitePath, cfg.Database.MigrationsPath); err != nil {
+		return nil, fmt.Errorf("run migrations: %w", err)
 	}
 
-	opts := []bot.Option{
-		bot.WithMiddlewares(LogIncoming()),
-		bot.WithDefaultHandler(handlers.DefaultHandler(store)),
+	sqliteDB, err := db.NewSQLite(cfg.Database.SQLitePath)
+	if err != nil {
+		return nil, fmt.Errorf("connect sqlite: %w", err)
 	}
 
-	opts = append(opts, Routes(store)...)
+	taskRepo := sqliterepo.NewTaskRepository(sqliteDB)
+	taskRequestRepo := sqliterepo.NewTaskRequestRepository(sqliteDB)
 
-	return bot.New(cfg.Telegram.Token, opts...)
+	taskService := taskapp.NewService(sqliteDB, taskRepo, taskRequestRepo)
+	moderationService := moderationapp.NewService(sqliteDB, taskRepo, taskRequestRepo)
+
+	return &App{
+		DB:                sqliteDB,
+		TaskService:       taskService,
+		ModerationService: moderationService,
+	}, nil
 }

@@ -11,6 +11,7 @@ http:
 
 database:
   sqlite_path: "./data/app.db"
+  migrations_path: "./migrations"
 
 dragonfly:
   addr: "localhost:6379"

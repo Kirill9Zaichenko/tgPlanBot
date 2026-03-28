@@ -1,4 +1,4 @@
-package telegram
+package handlers
 
 import (
 	"context"
@@ -6,25 +6,24 @@ import (
 
 	tgbot "github.com/go-telegram/bot"
 	"github.com/go-telegram/bot/models"
+
+	"tgPlanBot/internal/transport/telegram/messages"
 )
 
-func (b *Bot) handleStart(ctx context.Context, bot *tgbot.Bot, update *models.Update) {
+type StartHandler struct{}
+
+func NewStartHandler() *StartHandler {
+	return &StartHandler{}
+}
+
+func (h *StartHandler) Handle(ctx context.Context, bot *tgbot.Bot, update *models.Update) {
 	if update.Message == nil {
 		return
 	}
 
-	text := "Привет! Я бот-планировщик задач.\n\n" +
-		"Команды:\n" +
-		"/help — помощь\n" +
-		"/me — мой Telegram ID\n" +
-		"/mytasks — мои задачи\n" +
-		"/inbox — входящие запросы\n" +
-		"/accept {task_id} — принять задачу\n" +
-		"/reject {task_id} {comment} — отклонить задачу"
-
 	_, err := bot.SendMessage(ctx, &tgbot.SendMessageParams{
 		ChatID: update.Message.Chat.ID,
-		Text:   text,
+		Text:   messages.Start(),
 	})
 	if err != nil {
 		log.Printf("send /start response: %v", err)

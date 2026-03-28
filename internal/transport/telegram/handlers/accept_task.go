@@ -1,24 +1,36 @@
-package telegram
+package handlers
 
 import (
 	"context"
 	"log"
 	"strconv"
+	"strings"
 
 	tgbot "github.com/go-telegram/bot"
 	"github.com/go-telegram/bot/models"
+
+	moderationapp "tgPlanBot/internal/app/moderation"
+	"tgPlanBot/internal/transport/telegram/messages"
 )
 
-func (b *Bot) handleAcceptTask(ctx context.Context, bot *tgbot.Bot, update *models.Update) {
+type AcceptHandler struct {
+	moderationService *moderationapp.Service
+}
+
+func NewAcceptHandler(moderationService *moderationapp.Service) *AcceptHandler {
+	return &AcceptHandler{moderationService: moderationService}
+}
+
+func (h *AcceptHandler) Handle(ctx context.Context, bot *tgbot.Bot, update *models.Update) {
 	if update.Message == nil || update.Message.From == nil {
 		return
 	}
 
-	parts := splitCommand(update.Message.Text)
+	parts := strings.Fields(strings.TrimSpace(update.Message.Text))
 	if len(parts) < 2 {
 		_, _ = bot.SendMessage(ctx, &tgbot.SendMessageParams{
 			ChatID: update.Message.Chat.ID,
-			Text:   "Использование: /accept {task_id}",
+			Text:   messages.UsageAccept(),
 		})
 		return
 	}
@@ -27,17 +39,17 @@ func (b *Bot) handleAcceptTask(ctx context.Context, bot *tgbot.Bot, update *mode
 	if err != nil || taskID <= 0 {
 		_, _ = bot.SendMessage(ctx, &tgbot.SendMessageParams{
 			ChatID: update.Message.Chat.ID,
-			Text:   "Некорректный task_id.",
+			Text:   messages.InvalidTaskID(),
 		})
 		return
 	}
 
 	receiverUserID := update.Message.From.ID
 
-	if err := b.moderationService.AcceptTask(ctx, taskID, receiverUserID); err != nil {
+	if err := h.moderationService.AcceptTask(ctx, taskID, receiverUserID); err != nil {
 		_, _ = bot.SendMessage(ctx, &tgbot.SendMessageParams{
 			ChatID: update.Message.Chat.ID,
-			Text:   "Не удалось принять задачу: " + err.Error(),
+			Text:   messages.AcceptFailed(err),
 		})
 		log.Printf("accept task %d by user %d: %v", taskID, receiverUserID, err)
 		return
@@ -45,7 +57,7 @@ func (b *Bot) handleAcceptTask(ctx context.Context, bot *tgbot.Bot, update *mode
 
 	_, err = bot.SendMessage(ctx, &tgbot.SendMessageParams{
 		ChatID: update.Message.Chat.ID,
-		Text:   "Задача успешно принята.",
+		Text:   messages.TaskAccepted(),
 	})
 	if err != nil {
 		log.Printf("send /accept response: %v", err)
