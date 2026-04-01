@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"context"
-	"fmt"
 	"log"
 
 	tgbot "github.com/go-telegram/bot"
@@ -53,16 +52,9 @@ func (h *InboxHandler) Handle(
 	}
 
 	for _, item := range items {
-		text := fmt.Sprintf(
-			"Task #%d\nОтправитель: %d\nСтатус: %s",
-			item.TaskID,
-			item.SenderUserID,
-			item.Status,
-		)
-
 		_, err := bot.SendMessage(ctx, &tgbot.SendMessageParams{
 			ChatID:      update.Message.Chat.ID,
-			Text:        text,
+			Text:        messages.InboxItem(item),
 			ReplyMarkup: keyboards.InboxTaskActions(item.TaskID),
 		})
 		if err != nil {

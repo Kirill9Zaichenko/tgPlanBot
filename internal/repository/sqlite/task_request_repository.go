@@ -3,6 +3,7 @@ package sqlite
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"time"
 
@@ -60,7 +61,10 @@ func (r *TaskRequestRepository) GetByTaskID(ctx context.Context, taskID int64) (
 
 	req, err := scanTaskRequest(row)
 	if err != nil {
-		return nil, err
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, domain.ErrTaskRequestNotFound
+		}
+		return nil, fmt.Errorf("get task request by task id: %w", err)
 	}
 
 	return &req, nil
@@ -97,6 +101,60 @@ func (r *TaskRequestRepository) ListPendingByReceiver(ctx context.Context, recei
 	return requests, nil
 }
 
+func (r *TaskRequestRepository) ListInboxItemsByReceiver(ctx context.Context, receiverUserID int64) ([]domain.InboxItem, error) {
+	const query = `
+		SELECT
+			tr.task_id,
+			t.title,
+			t.description,
+			tr.status,
+			u.id,
+			u.telegram_id,
+			u.username,
+			u.first_name,
+			u.last_name
+		FROM task_requests tr
+		INNER JOIN tasks t ON t.id = tr.task_id
+		INNER JOIN users u ON u.id = tr.sender_user_id
+		WHERE tr.receiver_user_id = ? AND tr.status = ?
+		ORDER BY tr.created_at DESC
+	`
+
+	rows, err := r.db.QueryContext(ctx, query, receiverUserID, domain.RequestStatusPending)
+	if err != nil {
+		return nil, fmt.Errorf("query inbox items: %w", err)
+	}
+	defer rows.Close()
+
+	items := make([]domain.InboxItem, 0)
+
+	for rows.Next() {
+		var item domain.InboxItem
+
+		if err := rows.Scan(
+			&item.TaskID,
+			&item.Title,
+			&item.Description,
+			&item.Status,
+			&item.SenderUserID,
+			&item.SenderTelegramID,
+			&item.SenderUsername,
+			&item.SenderFirstName,
+			&item.SenderLastName,
+		); err != nil {
+			return nil, fmt.Errorf("scan inbox item: %w", err)
+		}
+
+		items = append(items, item)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate inbox items: %w", err)
+	}
+
+	return items, nil
+}
+
 func (r *TaskRequestRepository) UpdateDecision(ctx context.Context, taskID int64, status domain.RequestStatus, comment string) error {
 	const query = `
 		UPDATE task_requests
@@ -115,7 +173,7 @@ func (r *TaskRequestRepository) UpdateDecision(ctx context.Context, taskID int64
 	}
 
 	if rowsAffected == 0 {
-		return sql.ErrNoRows
+		return domain.ErrTaskRequestNotFound
 	}
 
 	return nil

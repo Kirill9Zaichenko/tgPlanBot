@@ -106,7 +106,7 @@ func (r *TaskRepository) GetByID(ctx context.Context, taskID int64) (*domain.Tas
 	task, err := scanTask(row)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, sql.ErrNoRows
+			return nil, domain.ErrTaskNotFound
 		}
 		return nil, fmt.Errorf("get task by id: %w", err)
 	}
@@ -132,7 +132,7 @@ func (r *TaskRepository) UpdateStatus(ctx context.Context, taskID int64, status 
 	}
 
 	if rowsAffected == 0 {
-		return sql.ErrNoRows
+		return domain.ErrTaskNotFound
 	}
 
 	return nil

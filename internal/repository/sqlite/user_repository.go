@@ -34,7 +34,7 @@ func (r *UserRepository) GetByTelegramID(ctx context.Context, telegramID int64) 
 	user, err := scanUser(row)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, sql.ErrNoRows
+			return nil, domain.ErrUserNotFound
 		}
 		return nil, fmt.Errorf("get user by telegram id: %w", err)
 	}

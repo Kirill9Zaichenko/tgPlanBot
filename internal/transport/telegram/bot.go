@@ -7,10 +7,12 @@ import (
 	tgbot "github.com/go-telegram/bot"
 
 	moderationapp "tgPlanBot/internal/app/moderation"
+	organizationapp "tgPlanBot/internal/app/organization"
 	taskapp "tgPlanBot/internal/app/task"
 	userapp "tgPlanBot/internal/app/user"
 	"tgPlanBot/internal/config"
 	tgcallbacks "tgPlanBot/internal/transport/telegram/callbacks"
+	tgcontext "tgPlanBot/internal/transport/telegram/context"
 	tghandlers "tgPlanBot/internal/transport/telegram/handlers"
 	tgstate "tgPlanBot/internal/transport/telegram/state"
 )
@@ -24,6 +26,7 @@ func NewBot(
 	taskService *taskapp.Service,
 	moderationService *moderationapp.Service,
 	userService *userapp.Service,
+	organizationService *organizationapp.Service,
 ) (*Bot, error) {
 	api, err := tgbot.New(cfg.Telegram.Token)
 	if err != nil {
@@ -31,7 +34,7 @@ func NewBot(
 	}
 
 	b := &Bot{api: api}
-	b.registerHandlers(taskService, moderationService, userService)
+	b.registerHandlers(taskService, moderationService, userService, organizationService)
 
 	return b, nil
 }
@@ -44,8 +47,10 @@ func (b *Bot) registerHandlers(
 	taskService *taskapp.Service,
 	moderationService *moderationapp.Service,
 	userService *userapp.Service,
+	organizationService *organizationapp.Service,
 ) {
 	stateStore := tgstate.NewStore()
+	contextStore := tgcontext.NewStore()
 
 	startHandler := tghandlers.NewStartHandler()
 	helpHandler := tghandlers.NewHelpHandler()
@@ -58,7 +63,13 @@ func (b *Bot) registerHandlers(
 	newTaskForHandler := tghandlers.NewNewTaskForHandler(stateStore)
 	textRouterHandler := tghandlers.NewTextRouterHandler(taskService, userService, stateStore)
 
+	cancelHandler := tghandlers.NewCancelHandler(stateStore)
+
 	callbackHandler := tgcallbacks.NewModerationHandler(moderationService)
+
+	orgsHandler := tghandlers.NewOrganizationsHandler(organizationService, contextStore)
+	useOrgHandler := tghandlers.NewUseOrganizationHandler(organizationService, contextStore)
+	currentOrgHandler := tghandlers.NewCurrentOrganizationHandler(organizationService, contextStore)
 
 	b.api.RegisterHandler(
 		tgbot.HandlerTypeMessageText,
@@ -121,6 +132,34 @@ func (b *Bot) registerHandlers(
 		"/reject",
 		tgbot.MatchTypePrefix,
 		tghandlers.WithSyncedMessageUser(userService, rejectHandler.Handle),
+	)
+
+	b.api.RegisterHandler(
+		tgbot.HandlerTypeMessageText,
+		"/cancel",
+		tgbot.MatchTypeExact,
+		tghandlers.WithSyncedMessageUser(userService, cancelHandler.Handle),
+	)
+
+	b.api.RegisterHandler(
+		tgbot.HandlerTypeMessageText,
+		"/orgs",
+		tgbot.MatchTypeExact,
+		tghandlers.WithSyncedMessageUser(userService, orgsHandler.Handle),
+	)
+
+	b.api.RegisterHandler(
+		tgbot.HandlerTypeMessageText,
+		"/useorg",
+		tgbot.MatchTypePrefix,
+		tghandlers.WithSyncedMessageUser(userService, useOrgHandler.Handle),
+	)
+
+	b.api.RegisterHandler(
+		tgbot.HandlerTypeMessageText,
+		"/currentorg",
+		tgbot.MatchTypeExact,
+		tghandlers.WithSyncedMessageUser(userService, currentOrgHandler.Handle),
 	)
 
 	b.api.RegisterHandler(

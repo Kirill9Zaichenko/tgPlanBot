@@ -7,22 +7,38 @@ import (
 	"tgPlanBot/internal/domain"
 )
 
-func InboxList(items []domain.TaskRequest) string {
-	if len(items) == 0 {
-		return NoInboxItems()
+func InboxItem(item domain.InboxItem) string {
+	sender := senderDisplay(item)
+
+	description := strings.TrimSpace(item.Description)
+	if description == "" {
+		description = "—"
 	}
 
-	var sb strings.Builder
-	sb.WriteString("Входящие запросы:\n\n")
+	return fmt.Sprintf(
+		"📥 Входящая задача\n\n"+
+			"ID: #%d\n"+
+			"От: %s\n"+
+			"Название: %s\n"+
+			"Описание: %s\n"+
+			"Статус: %s",
+		item.TaskID,
+		sender,
+		item.Title,
+		description,
+		item.Status,
+	)
+}
 
-	for _, item := range items {
-		sb.WriteString(fmt.Sprintf(
-			"Task #%d\nОтправитель: %d\nСтатус: %s\n\n",
-			item.TaskID,
-			item.SenderUserID,
-			item.Status,
-		))
+func senderDisplay(item domain.InboxItem) string {
+	if strings.TrimSpace(item.SenderUsername) != "" {
+		return "@" + item.SenderUsername
 	}
 
-	return strings.TrimSpace(sb.String())
+	fullName := strings.TrimSpace(item.SenderFirstName + " " + item.SenderLastName)
+	if fullName != "" {
+		return fullName
+	}
+
+	return fmt.Sprintf("user #%d", item.SenderUserID)
 }

@@ -74,7 +74,7 @@ func (h *ModerationHandler) Handle(
 
 func (h *ModerationHandler) answerCallback(ctx context.Context, bot *tgbot.Bot, update *models.Update, text string) {
 	_, err := bot.AnswerCallbackQuery(ctx, &tgbot.AnswerCallbackQueryParams{
-		CallbackQueryID: strconv.FormatInt(update.CallbackQuery.From.ID, 10),
+		CallbackQueryID: update.CallbackQuery.ID,
 		Text:            text,
 		ShowAlert:       false,
 	})

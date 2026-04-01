@@ -30,6 +30,7 @@ func (h *MeHandler) Handle(
 	_, err := bot.SendMessage(ctx, &tgbot.SendMessageParams{
 		ChatID: update.Message.Chat.ID,
 		Text: messages.Me(
+			user.ID,
 			user.TelegramID,
 			user.Username,
 			user.FirstName,

@@ -29,6 +29,7 @@ func main() {
 		appContainer.TaskService,
 		appContainer.ModerationService,
 		appContainer.UserService,
+		appContainer.OrganizationService,
 	)
 	if err != nil {
 		log.Fatalf("init bot: %v", err)

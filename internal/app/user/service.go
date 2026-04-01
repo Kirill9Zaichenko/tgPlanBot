@@ -2,7 +2,7 @@ package user
 
 import (
 	"context"
-	"database/sql"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -37,11 +37,11 @@ func (s *Service) SyncTelegramUser(ctx context.Context, input SyncTelegramUserIn
 	input.LastName = strings.TrimSpace(input.LastName)
 
 	existingUser, err := s.userRepo.GetByTelegramID(ctx, input.TelegramID)
-	if err != nil && err != sql.ErrNoRows {
+	if err != nil && !errors.Is(err, domain.ErrUserNotFound) {
 		return nil, fmt.Errorf("get user by telegram id: %w", err)
 	}
 
-	if err == sql.ErrNoRows {
+	if errors.Is(err, domain.ErrUserNotFound) {
 		user := &domain.User{
 			TelegramID: input.TelegramID,
 			Username:   input.Username,

@@ -3,6 +3,7 @@ package moderation
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -30,12 +31,12 @@ func NewService(
 	}
 }
 
-func (s *Service) ListInbox(ctx context.Context, receiverUserID int64) ([]domain.TaskRequest, error) {
+func (s *Service) ListInbox(ctx context.Context, receiverUserID int64) ([]domain.InboxItem, error) {
 	if receiverUserID <= 0 {
 		return nil, fmt.Errorf("invalid receiver user id")
 	}
 
-	items, err := s.taskRequestRepo.ListPendingByReceiver(ctx, receiverUserID)
+	items, err := s.taskRequestRepo.ListInboxItemsByReceiver(ctx, receiverUserID)
 	if err != nil {
 		return nil, fmt.Errorf("list inbox: %w", err)
 	}
@@ -50,8 +51,8 @@ func (s *Service) AcceptTask(ctx context.Context, taskID, receiverUserID int64) 
 
 		req, err := taskRequestRepo.GetByTaskID(ctx, taskID)
 		if err != nil {
-			if err == sql.ErrNoRows {
-				return fmt.Errorf("task request not found")
+			if errors.Is(err, domain.ErrTaskRequestNotFound) {
+				return domain.ErrTaskRequestNotFound
 			}
 			return fmt.Errorf("get task request: %w", err)
 		}
@@ -83,8 +84,8 @@ func (s *Service) RejectTask(ctx context.Context, taskID, receiverUserID int64, 
 
 		req, err := taskRequestRepo.GetByTaskID(ctx, taskID)
 		if err != nil {
-			if err == sql.ErrNoRows {
-				return fmt.Errorf("task request not found")
+			if errors.Is(err, domain.ErrTaskRequestNotFound) {
+				return domain.ErrTaskRequestNotFound
 			}
 			return fmt.Errorf("get task request: %w", err)
 		}

@@ -2,7 +2,7 @@ package handlers
 
 import (
 	"context"
-	"database/sql"
+	"errors"
 	"log"
 	"strconv"
 	"strings"
@@ -73,7 +73,7 @@ func (h *TextRouterHandler) Handle(
 
 		assignee, err := h.userService.GetByTelegramID(ctx, telegramID)
 		if err != nil {
-			if err == sql.ErrNoRows || strings.Contains(err.Error(), "no rows") {
+			if errors.Is(err, domain.ErrUserNotFound) {
 				_, _ = bot.SendMessage(ctx, &tgbot.SendMessageParams{
 					ChatID: chatID,
 					Text:   "Пользователь не найден. Пусть сначала напишет боту /start или /me.",

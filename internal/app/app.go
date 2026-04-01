@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	moderationapp "tgPlanBot/internal/app/moderation"
+	organizationapp "tgPlanBot/internal/app/organization"
 	taskapp "tgPlanBot/internal/app/task"
 	userapp "tgPlanBot/internal/app/user"
 	"tgPlanBot/internal/config"
@@ -13,10 +14,11 @@ import (
 )
 
 type App struct {
-	DB                *sql.DB
-	TaskService       *taskapp.Service
-	ModerationService *moderationapp.Service
-	UserService       *userapp.Service
+	DB                  *sql.DB
+	TaskService         *taskapp.Service
+	ModerationService   *moderationapp.Service
+	UserService         *userapp.Service
+	OrganizationService *organizationapp.Service
 }
 
 func New(cfg *config.Config) (*App, error) {
@@ -37,10 +39,15 @@ func New(cfg *config.Config) (*App, error) {
 	moderationService := moderationapp.NewService(sqliteDB, taskRepo, taskRequestRepo)
 	userService := userapp.NewService(userRepo)
 
+	organizationRepo := sqliterepo.NewOrganizationRepository(sqliteDB)
+	organizationMembershipRepo := sqliterepo.NewOrganizationMembershipRepository(sqliteDB)
+	organizationService := organizationapp.NewService(organizationRepo, organizationMembershipRepo)
+
 	return &App{
-		DB:                sqliteDB,
-		TaskService:       taskService,
-		ModerationService: moderationService,
-		UserService:       userService,
+		DB:                  sqliteDB,
+		TaskService:         taskService,
+		ModerationService:   moderationService,
+		UserService:         userService,
+		OrganizationService: organizationService,
 	}, nil
 }
