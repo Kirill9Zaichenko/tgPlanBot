@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"log"
+	"tgPlanBot/internal/domain"
 
 	tgbot "github.com/go-telegram/bot"
 	"github.com/go-telegram/bot/models"
@@ -16,17 +17,17 @@ type MyTasksHandler struct {
 }
 
 func NewMyTasksHandler(taskService *taskapp.Service) *MyTasksHandler {
-	return &MyTasksHandler{taskService: taskService}
+	return &MyTasksHandler{
+		taskService: taskService,
+	}
 }
 
-func (h *MyTasksHandler) Handle(ctx context.Context, bot *tgbot.Bot, update *models.Update) {
+func (h *MyTasksHandler) Handle(ctx context.Context, bot *tgbot.Bot, update *models.Update, user *domain.User) {
 	if update.Message == nil || update.Message.From == nil {
 		return
 	}
 
-	userID := update.Message.From.ID
-
-	tasks, err := h.taskService.ListByAssignee(ctx, userID)
+	tasks, err := h.taskService.ListByAssignee(ctx, user.ID)
 	if err != nil {
 		_, _ = bot.SendMessage(ctx, &tgbot.SendMessageParams{
 			ChatID: update.Message.Chat.ID,

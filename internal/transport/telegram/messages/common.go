@@ -10,6 +10,7 @@ func Start() string {
 		"/mytasks — мои задачи\n" +
 		"/inbox — входящие запросы\n" +
 		"/newtask — создать задачу себе\n" +
+		"/newtaskfor — создать задачу другому пользователю\n" +
 		"/accept {task_id} — принять задачу\n" +
 		"/reject {task_id} {comment} — отклонить задачу"
 }
@@ -22,6 +23,7 @@ func Help() string {
 		"/mytasks — показать мои задачи\n" +
 		"/inbox — показать входящие запросы\n" +
 		"/newtask — создать задачу себе\n" +
+		"/newtaskfor — создать задачу другому пользователю\n" +
 		"/accept {task_id} — принять задачу\n" +
 		"/reject {task_id} {comment} — отклонить задачу"
 }

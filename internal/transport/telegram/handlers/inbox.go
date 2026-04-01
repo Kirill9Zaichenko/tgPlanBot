@@ -9,6 +9,7 @@ import (
 	"github.com/go-telegram/bot/models"
 
 	moderationapp "tgPlanBot/internal/app/moderation"
+	"tgPlanBot/internal/domain"
 	"tgPlanBot/internal/transport/telegram/keyboards"
 	"tgPlanBot/internal/transport/telegram/messages"
 )
@@ -18,23 +19,28 @@ type InboxHandler struct {
 }
 
 func NewInboxHandler(moderationService *moderationapp.Service) *InboxHandler {
-	return &InboxHandler{moderationService: moderationService}
+	return &InboxHandler{
+		moderationService: moderationService,
+	}
 }
 
-func (h *InboxHandler) Handle(ctx context.Context, bot *tgbot.Bot, update *models.Update) {
-	if update.Message == nil || update.Message.From == nil {
+func (h *InboxHandler) Handle(
+	ctx context.Context,
+	bot *tgbot.Bot,
+	update *models.Update,
+	user *domain.User,
+) {
+	if update.Message == nil {
 		return
 	}
 
-	userID := update.Message.From.ID
-
-	items, err := h.moderationService.ListInbox(ctx, userID)
+	items, err := h.moderationService.ListInbox(ctx, user.ID)
 	if err != nil {
 		_, _ = bot.SendMessage(ctx, &tgbot.SendMessageParams{
 			ChatID: update.Message.Chat.ID,
 			Text:   messages.InboxLoadFailed(),
 		})
-		log.Printf("list inbox: %v", err)
+		log.Printf("list inbox for user %d: %v", user.ID, err)
 		return
 	}
 

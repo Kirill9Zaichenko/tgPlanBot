@@ -11,6 +11,7 @@ import (
 	"github.com/go-telegram/bot/models"
 
 	moderationapp "tgPlanBot/internal/app/moderation"
+	"tgPlanBot/internal/domain"
 )
 
 type ModerationHandler struct {
@@ -21,7 +22,12 @@ func NewModerationHandler(moderationService *moderationapp.Service) *ModerationH
 	return &ModerationHandler{moderationService: moderationService}
 }
 
-func (h *ModerationHandler) Handle(ctx context.Context, bot *tgbot.Bot, update *models.Update) {
+func (h *ModerationHandler) Handle(
+	ctx context.Context,
+	bot *tgbot.Bot,
+	update *models.Update,
+	user *domain.User,
+) {
 	if update.CallbackQuery == nil {
 		return
 	}
@@ -40,12 +46,10 @@ func (h *ModerationHandler) Handle(ctx context.Context, bot *tgbot.Bot, update *
 		return
 	}
 
-	receiverUserID := update.CallbackQuery.From.ID
-
 	switch action {
 	case "accept":
-		if err := h.moderationService.AcceptTask(ctx, taskID, receiverUserID); err != nil {
-			log.Printf("accept from callback task %d by user %d: %v", taskID, receiverUserID, err)
+		if err := h.moderationService.AcceptTask(ctx, taskID, user.ID); err != nil {
+			log.Printf("accept from callback task %d by user %d: %v", taskID, user.ID, err)
 			h.answerCallback(ctx, bot, update, "Не удалось принять: "+err.Error())
 			return
 		}
@@ -54,8 +58,8 @@ func (h *ModerationHandler) Handle(ctx context.Context, bot *tgbot.Bot, update *
 		h.sendStatusMessage(ctx, bot, update, fmt.Sprintf("Task #%d\nСтатус: accepted", taskID))
 
 	case "reject":
-		if err := h.moderationService.RejectTask(ctx, taskID, receiverUserID, "rejected from telegram"); err != nil {
-			log.Printf("reject from callback task %d by user %d: %v", taskID, receiverUserID, err)
+		if err := h.moderationService.RejectTask(ctx, taskID, user.ID, "rejected from telegram"); err != nil {
+			log.Printf("reject from callback task %d by user %d: %v", taskID, user.ID, err)
 			h.answerCallback(ctx, bot, update, "Не удалось отклонить: "+err.Error())
 			return
 		}
@@ -70,7 +74,7 @@ func (h *ModerationHandler) Handle(ctx context.Context, bot *tgbot.Bot, update *
 
 func (h *ModerationHandler) answerCallback(ctx context.Context, bot *tgbot.Bot, update *models.Update, text string) {
 	_, err := bot.AnswerCallbackQuery(ctx, &tgbot.AnswerCallbackQueryParams{
-		CallbackQueryID: update.CallbackQuery.ID,
+		CallbackQueryID: strconv.FormatInt(update.CallbackQuery.From.ID, 10),
 		Text:            text,
 		ShowAlert:       false,
 	})

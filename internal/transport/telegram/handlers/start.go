@@ -7,6 +7,7 @@ import (
 	tgbot "github.com/go-telegram/bot"
 	"github.com/go-telegram/bot/models"
 
+	"tgPlanBot/internal/domain"
 	"tgPlanBot/internal/transport/telegram/messages"
 )
 
@@ -16,7 +17,14 @@ func NewStartHandler() *StartHandler {
 	return &StartHandler{}
 }
 
-func (h *StartHandler) Handle(ctx context.Context, bot *tgbot.Bot, update *models.Update) {
+func (h *StartHandler) Handle(
+	ctx context.Context,
+	bot *tgbot.Bot,
+	update *models.Update,
+	user *domain.User,
+) {
+	_ = user
+
 	if update.Message == nil {
 		return
 	}

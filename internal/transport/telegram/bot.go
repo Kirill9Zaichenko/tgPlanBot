@@ -8,6 +8,7 @@ import (
 
 	moderationapp "tgPlanBot/internal/app/moderation"
 	taskapp "tgPlanBot/internal/app/task"
+	userapp "tgPlanBot/internal/app/user"
 	"tgPlanBot/internal/config"
 	tgcallbacks "tgPlanBot/internal/transport/telegram/callbacks"
 	tghandlers "tgPlanBot/internal/transport/telegram/handlers"
@@ -22,17 +23,15 @@ func NewBot(
 	cfg *config.Config,
 	taskService *taskapp.Service,
 	moderationService *moderationapp.Service,
+	userService *userapp.Service,
 ) (*Bot, error) {
 	api, err := tgbot.New(cfg.Telegram.Token)
 	if err != nil {
 		return nil, fmt.Errorf("create telegram bot: %w", err)
 	}
 
-	b := &Bot{
-		api: api,
-	}
-
-	b.registerHandlers(taskService, moderationService)
+	b := &Bot{api: api}
+	b.registerHandlers(taskService, moderationService, userService)
 
 	return b, nil
 }
@@ -44,6 +43,7 @@ func (b *Bot) Start(ctx context.Context) {
 func (b *Bot) registerHandlers(
 	taskService *taskapp.Service,
 	moderationService *moderationapp.Service,
+	userService *userapp.Service,
 ) {
 	stateStore := tgstate.NewStore()
 
@@ -55,20 +55,85 @@ func (b *Bot) registerHandlers(
 	acceptHandler := tghandlers.NewAcceptHandler(moderationService)
 	rejectHandler := tghandlers.NewRejectHandler(moderationService)
 	newTaskHandler := tghandlers.NewNewTaskHandler(stateStore)
-	textRouterHandler := tghandlers.NewTextRouterHandler(taskService, stateStore)
+	newTaskForHandler := tghandlers.NewNewTaskForHandler(stateStore)
+	textRouterHandler := tghandlers.NewTextRouterHandler(taskService, userService, stateStore)
 
 	callbackHandler := tgcallbacks.NewModerationHandler(moderationService)
 
-	b.api.RegisterHandler(tgbot.HandlerTypeMessageText, "/start", tgbot.MatchTypeExact, startHandler.Handle)
-	b.api.RegisterHandler(tgbot.HandlerTypeMessageText, "/help", tgbot.MatchTypeExact, helpHandler.Handle)
-	b.api.RegisterHandler(tgbot.HandlerTypeMessageText, "/me", tgbot.MatchTypeExact, meHandler.Handle)
-	b.api.RegisterHandler(tgbot.HandlerTypeMessageText, "/mytasks", tgbot.MatchTypeExact, myTasksHandler.Handle)
-	b.api.RegisterHandler(tgbot.HandlerTypeMessageText, "/inbox", tgbot.MatchTypeExact, inboxHandler.Handle)
-	b.api.RegisterHandler(tgbot.HandlerTypeMessageText, "/newtask", tgbot.MatchTypeExact, newTaskHandler.Handle)
-	b.api.RegisterHandler(tgbot.HandlerTypeMessageText, "/accept", tgbot.MatchTypePrefix, acceptHandler.Handle)
-	b.api.RegisterHandler(tgbot.HandlerTypeMessageText, "/reject", tgbot.MatchTypePrefix, rejectHandler.Handle)
+	b.api.RegisterHandler(
+		tgbot.HandlerTypeMessageText,
+		"/start",
+		tgbot.MatchTypeExact,
+		tghandlers.WithSyncedMessageUser(userService, startHandler.Handle),
+	)
 
-	b.api.RegisterHandler(tgbot.HandlerTypeMessageText, "", tgbot.MatchTypePrefix, textRouterHandler.Handle)
+	b.api.RegisterHandler(
+		tgbot.HandlerTypeMessageText,
+		"/help",
+		tgbot.MatchTypeExact,
+		tghandlers.WithSyncedMessageUser(userService, helpHandler.Handle),
+	)
 
-	b.api.RegisterHandler(tgbot.HandlerTypeCallbackQueryData, "", tgbot.MatchTypePrefix, callbackHandler.Handle)
+	b.api.RegisterHandler(
+		tgbot.HandlerTypeMessageText,
+		"/me",
+		tgbot.MatchTypeExact,
+		tghandlers.WithSyncedMessageUser(userService, meHandler.Handle),
+	)
+
+	b.api.RegisterHandler(
+		tgbot.HandlerTypeMessageText,
+		"/mytasks",
+		tgbot.MatchTypeExact,
+		tghandlers.WithSyncedMessageUser(userService, myTasksHandler.Handle),
+	)
+
+	b.api.RegisterHandler(
+		tgbot.HandlerTypeMessageText,
+		"/inbox",
+		tgbot.MatchTypeExact,
+		tghandlers.WithSyncedMessageUser(userService, inboxHandler.Handle),
+	)
+
+	b.api.RegisterHandler(
+		tgbot.HandlerTypeMessageText,
+		"/newtask",
+		tgbot.MatchTypeExact,
+		tghandlers.WithSyncedMessageUser(userService, newTaskHandler.Handle),
+	)
+
+	b.api.RegisterHandler(
+		tgbot.HandlerTypeMessageText,
+		"/newtaskfor",
+		tgbot.MatchTypeExact,
+		tghandlers.WithSyncedMessageUser(userService, newTaskForHandler.Handle),
+	)
+
+	b.api.RegisterHandler(
+		tgbot.HandlerTypeMessageText,
+		"/accept",
+		tgbot.MatchTypePrefix,
+		tghandlers.WithSyncedMessageUser(userService, acceptHandler.Handle),
+	)
+
+	b.api.RegisterHandler(
+		tgbot.HandlerTypeMessageText,
+		"/reject",
+		tgbot.MatchTypePrefix,
+		tghandlers.WithSyncedMessageUser(userService, rejectHandler.Handle),
+	)
+
+	b.api.RegisterHandler(
+		tgbot.HandlerTypeMessageText,
+		"",
+		tgbot.MatchTypePrefix,
+		tghandlers.WithSyncedMessageUser(userService, textRouterHandler.Handle),
+	)
+
+	b.api.RegisterHandler(
+		tgbot.HandlerTypeCallbackQueryData,
+		"",
+		tgbot.MatchTypePrefix,
+		tghandlers.WithSyncedCallbackUser(userService, callbackHandler.Handle),
+	)
 }

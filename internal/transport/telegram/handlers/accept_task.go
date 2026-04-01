@@ -10,6 +10,7 @@ import (
 	"github.com/go-telegram/bot/models"
 
 	moderationapp "tgPlanBot/internal/app/moderation"
+	"tgPlanBot/internal/domain"
 	"tgPlanBot/internal/transport/telegram/messages"
 )
 
@@ -21,8 +22,13 @@ func NewAcceptHandler(moderationService *moderationapp.Service) *AcceptHandler {
 	return &AcceptHandler{moderationService: moderationService}
 }
 
-func (h *AcceptHandler) Handle(ctx context.Context, bot *tgbot.Bot, update *models.Update) {
-	if update.Message == nil || update.Message.From == nil {
+func (h *AcceptHandler) Handle(
+	ctx context.Context,
+	bot *tgbot.Bot,
+	update *models.Update,
+	user *domain.User,
+) {
+	if update.Message == nil {
 		return
 	}
 
@@ -44,14 +50,12 @@ func (h *AcceptHandler) Handle(ctx context.Context, bot *tgbot.Bot, update *mode
 		return
 	}
 
-	receiverUserID := update.Message.From.ID
-
-	if err := h.moderationService.AcceptTask(ctx, taskID, receiverUserID); err != nil {
+	if err := h.moderationService.AcceptTask(ctx, taskID, user.ID); err != nil {
 		_, _ = bot.SendMessage(ctx, &tgbot.SendMessageParams{
 			ChatID: update.Message.Chat.ID,
 			Text:   messages.AcceptFailed(err),
 		})
-		log.Printf("accept task %d by user %d: %v", taskID, receiverUserID, err)
+		log.Printf("accept task %d by user %d: %v", taskID, user.ID, err)
 		return
 	}
 

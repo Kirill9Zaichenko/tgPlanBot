@@ -11,15 +11,15 @@ import (
 	tgstate "tgPlanBot/internal/transport/telegram/state"
 )
 
-type NewTaskHandler struct {
+type NewTaskForHandler struct {
 	stateStore *tgstate.Store
 }
 
-func NewNewTaskHandler(stateStore *tgstate.Store) *NewTaskHandler {
-	return &NewTaskHandler{stateStore: stateStore}
+func NewNewTaskForHandler(stateStore *tgstate.Store) *NewTaskForHandler {
+	return &NewTaskForHandler{stateStore: stateStore}
 }
 
-func (h *NewTaskHandler) Handle(
+func (h *NewTaskForHandler) Handle(
 	ctx context.Context,
 	bot *tgbot.Bot,
 	update *models.Update,
@@ -30,17 +30,16 @@ func (h *NewTaskHandler) Handle(
 	}
 
 	h.stateStore.Set(user.ID, tgstate.NewTaskState{
-		UserID:         user.ID,
-		Flow:           tgstate.FlowNewTask,
-		Step:           tgstate.StepWaitingTaskTitle,
-		AssigneeUserID: user.ID,
+		UserID: user.ID,
+		Flow:   tgstate.FlowNewTaskFor,
+		Step:   tgstate.StepWaitingAssigneeTelegramID,
 	})
 
 	_, err := bot.SendMessage(ctx, &tgbot.SendMessageParams{
 		ChatID: update.Message.Chat.ID,
-		Text:   "Введи название задачи.",
+		Text:   "Введи telegram_id получателя задачи.",
 	})
 	if err != nil {
-		log.Printf("send /newtask response: %v", err)
+		log.Printf("send /newtaskfor response: %v", err)
 	}
 }
